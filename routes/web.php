@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TransferOutController;
 use App\Http\Controllers\TransferInController;
+use App\Http\Controllers\TransferMediaController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\FarmController;
 use App\Http\Controllers\ManurePileController;
@@ -15,6 +16,10 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('/media/transfers/{path}', [TransferMediaController::class, 'show'])
+        ->where('path', '.*')
+        ->name('transfers.media');
+
     // Dashboard Route
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

@@ -81,7 +81,7 @@
                                     data-vehicle="{{ $transfer->license_plate }}"
                                     data-weight="{{ number_format($transfer->weight, 2) }}"
                                     data-time="{{ $transfer->out_datetime->format('d/m/Y H:i น.') }}"
-                                    data-photo="{{ asset('storage/' . $transfer->out_photo) }}"
+                                    data-photo="{{ $transfer->out_photo_url }}"
                                     data-remark="{{ $transfer->remark ?? '-' }}">
                                 <i class="bi bi-check-circle me-1"></i> ตรวจรับเข้ากอง
                             </button>
@@ -150,6 +150,7 @@
                         <div class="col-12 mt-3 text-center">
                             <span class="text-muted d-block text-start mb-2" style="font-size: 0.85rem;">รูปถ่ายหลักฐานขาออก:</span>
                             <img id="detail-photo" src="#" alt="Outward proof photo" class="img-fluid rounded shadow-sm" style="max-height: 180px;">
+                            <div id="detail-photo-empty" class="text-muted small d-none mt-2">ไม่พบรูปหลักฐานขาออก</div>
                         </div>
                     </div>
 
@@ -264,6 +265,7 @@
         const detailTime = document.getElementById('detail-time');
         const detailRemark = document.getElementById('detail-remark');
         const detailPhoto = document.getElementById('detail-photo');
+        const detailPhotoEmpty = document.getElementById('detail-photo-empty');
 
         // Buttons trigger modal details
         document.querySelectorAll('.btn-receive').forEach(button => {
@@ -277,7 +279,10 @@
                 detailWeight.textContent = this.getAttribute('data-weight');
                 detailTime.textContent = this.getAttribute('data-time');
                 detailRemark.textContent = this.getAttribute('data-remark');
-                detailPhoto.src = this.getAttribute('data-photo');
+                const photoUrl = this.getAttribute('data-photo');
+                detailPhoto.classList.remove('d-none');
+                detailPhotoEmpty.classList.add('d-none');
+                detailPhoto.src = photoUrl || '#';
 
                 // Set form action route dynamically
                 receiveForm.action = `/transfers/in/${id}/receive`;
@@ -291,6 +296,11 @@
                 // Open modal
                 receiveModal.show();
             });
+        });
+
+        detailPhoto.addEventListener('error', function() {
+            detailPhoto.classList.add('d-none');
+            detailPhotoEmpty.classList.remove('d-none');
         });
     });
 

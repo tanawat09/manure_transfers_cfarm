@@ -2,31 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ManureTransfer;
 use App\Models\Farm;
+use App\Models\ManureTransfer;
+use App\Support\TransferImage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class TransferOutController extends Controller
 {
     public function create()
     {
         $farms = Farm::orderBy('name')->get();
-        
-        // Generate pre-calculated transfer number (for display, will be re-calculated during DB transaction to guarantee safety)
+
         $dateStr = Carbon::now('Asia/Bangkok')->format('Ymd');
         $prefix = 'MF-' . $dateStr . '-';
         $lastTransfer = ManureTransfer::where('transfer_no', 'like', $prefix . '%')
             ->orderBy('transfer_no', 'desc')
             ->first();
-        
+
         $newNum = '001';
         if ($lastTransfer) {
             $lastNum = (int) substr($lastTransfer->transfer_no, -3);
             $newNum = str_pad($lastNum + 1, 3, '0', STR_PAD_LEFT);
         }
+
         $suggestedNo = $prefix . $newNum;
         $currentDateTime = Carbon::now('Asia/Bangkok')->format('Y-m-d\TH:i');
 
@@ -39,7 +39,7 @@ class TransferOutController extends Controller
             'farm_id' => 'required|exists:farms,id',
             'license_plate' => 'required|string|max:255',
             'weight' => 'required|numeric|min:0.01',
-            'out_photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'out_photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:15360',
             'remark' => 'nullable|string',
         ], [
             'farm_id.required' => 'กรุณาเลือกฟาร์มต้นทาง',
@@ -50,42 +50,38 @@ class TransferOutController extends Controller
             'weight.required' => 'กรุณากรอกน้ำหนักมูลไก่',
             'weight.numeric' => 'น้ำหนักต้องเป็นตัวเลขเท่านั้น',
             'weight.min' => 'น้ำหนักต้องมากกว่า 0',
-            'out_datetime.required' => 'กรุณาระบุวันเวลาออกจากฟาร์ม',
             'out_photo.required' => 'กรุณาอัปโหลดรูปถ่ายขาออก',
             'out_photo.image' => 'ไฟล์ที่อัปโหลดต้องเป็นรูปภาพเท่านั้น',
             'out_photo.mimes' => 'รูปภาพต้องเป็นไฟล์สกุล jpg, jpeg, png หรือ webp เท่านั้น',
-            'out_photo.max' => 'ขนาดรูปถ่ายห้ามเกิน 5MB',
+            'out_photo.max' => 'ขนาดรูปถ่ายห้ามเกิน 15MB',
         ]);
 
         try {
             $transfer = DB::transaction(function () use ($request) {
-                // Generate a robust and unique transaction-safe transfer number
                 $dateStr = Carbon::now('Asia/Bangkok')->format('Ymd');
                 $prefix = 'MF-' . $dateStr . '-';
-                
-                // Row locking the last matching record to avoid race conditions
+
                 $lastTransfer = ManureTransfer::where('transfer_no', 'like', $prefix . '%')
                     ->lockForUpdate()
                     ->orderBy('transfer_no', 'desc')
                     ->first();
-                
+
                 $newNum = '001';
                 if ($lastTransfer) {
                     $lastNum = (int) substr($lastTransfer->transfer_no, -3);
                     $newNum = str_pad($lastNum + 1, 3, '0', STR_PAD_LEFT);
                 }
+
                 $transferNo = $prefix . $newNum;
 
-                // Handle Photo Upload securely
                 $photoPath = null;
                 if ($request->hasFile('out_photo')) {
-                    $file = $request->file('out_photo');
-                    $filename = 'out_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    // Store in storage/app/public/transfers directory
-                    $photoPath = $file->storeAs('transfers', $filename, 'public');
+                    $photoPath = TransferImage::optimizeAndStore(
+                        $request->file('out_photo'),
+                        'out'
+                    );
                 }
 
-                // Create the record
                 return ManureTransfer::create([
                     'transfer_no' => $transferNo,
                     'farm_id' => $request->farm_id,
@@ -101,7 +97,6 @@ class TransferOutController extends Controller
 
             return redirect()->route('transfers.out_success', $transfer->id)
                 ->with('success', 'บันทึกข้อมูลขาออกจากฟาร์มเรียบร้อยแล้ว!');
-
         } catch (\Exception $e) {
             return back()->withInput()->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
         }
@@ -110,6 +105,7 @@ class TransferOutController extends Controller
     public function success($id)
     {
         $transfer = ManureTransfer::with(['farm', 'outUser'])->findOrFail($id);
+
         return view('transfers.out-success', compact('transfer'));
     }
 }

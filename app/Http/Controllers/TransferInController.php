@@ -2,26 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ManureTransfer;
 use App\Models\ManurePile;
+use App\Models\ManureTransfer;
+use App\Support\TransferImage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class TransferInController extends Controller
 {
     public function index(Request $request)
     {
         $search = $request->input('search');
-        
+
         $query = ManureTransfer::with(['farm', 'outUser'])
             ->where('status', ManureTransfer::STATUS_PENDING);
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('transfer_no', 'like', "%{$search}%")
-                  ->orWhere('license_plate', 'like', "%{$search}%");
+                    ->orWhere('license_plate', 'like', "%{$search}%");
             });
         }
 
@@ -40,7 +40,7 @@ class TransferInController extends Controller
         $request->validate([
             'pile_id' => 'required|exists:manure_piles,id',
             'received_datetime' => 'required|date',
-            'receive_photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'receive_photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:15360',
         ], [
             'pile_id.required' => 'กรุณาเลือกกองมูลไก่ที่ต้องการลง',
             'pile_id.exists' => 'ไม่พบข้อมูลกองมูลไก่ที่เลือก',
@@ -48,28 +48,25 @@ class TransferInController extends Controller
             'receive_photo.required' => 'กรุณาอัปโหลดรูปถ่ายยืนยันตอนรับเข้า',
             'receive_photo.image' => 'ไฟล์ที่อัปโหลดต้องเป็นรูปภาพเท่านั้น',
             'receive_photo.mimes' => 'รูปภาพต้องเป็นไฟล์สกุล jpg, jpeg, png หรือ webp เท่านั้น',
-            'receive_photo.max' => 'ขนาดรูปถ่ายห้ามเกิน 5MB',
+            'receive_photo.max' => 'ขนาดรูปถ่ายห้ามเกิน 15MB',
         ]);
 
         try {
             DB::transaction(function () use ($request, $id) {
-                // Fetch the record with lock to prevent race conditions
                 $transfer = ManureTransfer::lockForUpdate()->findOrFail($id);
 
-                // Double check if already processed to prevent duplicate receipts
                 if ($transfer->status !== ManureTransfer::STATUS_PENDING) {
                     throw new \Exception('รายการนี้ได้รับการรับเข้าหรือถูกเปลี่ยนสถานะไปแล้ว ไม่สามารถรับซ้ำได้');
                 }
 
-                // Handle Photo Upload
                 $photoPath = null;
                 if ($request->hasFile('receive_photo')) {
-                    $file = $request->file('receive_photo');
-                    $filename = 'in_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $photoPath = $file->storeAs('transfers', $filename, 'public');
+                    $photoPath = TransferImage::optimizeAndStore(
+                        $request->file('receive_photo'),
+                        'in'
+                    );
                 }
 
-                // Update the transfer record
                 $transfer->update([
                     'pile_id' => $request->pile_id,
                     'received_datetime' => Carbon::parse($request->received_datetime)->format('Y-m-d H:i:s'),
@@ -81,7 +78,6 @@ class TransferInController extends Controller
 
             return redirect()->route('transfers.in')
                 ->with('success', 'ตรวจรับมูลไก่เข้ากองสำเร็จเรียบร้อยแล้ว!');
-
         } catch (\Exception $e) {
             return back()->with('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
         }

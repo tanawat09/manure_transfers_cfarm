@@ -16,6 +16,14 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Increase PHP upload limits for mobile photos
+RUN { \
+    echo "upload_max_filesize=20M"; \
+    echo "post_max_size=20M"; \
+    echo "memory_limit=256M"; \
+    echo "max_file_uploads=20"; \
+  } > /usr/local/etc/php/conf.d/uploads.ini
+
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 

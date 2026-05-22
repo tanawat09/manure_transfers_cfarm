@@ -53,7 +53,7 @@
                 <div class="mb-4">
                     <label class="form-label fw-semibold text-muted mb-2">รูปถ่ายหลักฐานขาออก</label>
                     <div class="text-center p-2 border bg-light rounded">
-                        <img src="{{ asset('storage/' . $transfer->out_photo) }}" alt="Outward photo" class="img-fluid rounded shadow-sm" style="max-height: 250px;">
+                        <img src="{{ $transfer->out_photo_url }}" alt="Outward photo" class="img-fluid rounded shadow-sm" style="max-height: 250px;">
                     </div>
                 </div>
 

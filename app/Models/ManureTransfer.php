@@ -34,6 +34,11 @@ class ManureTransfer extends Model
         'weight' => 'decimal:2'
     ];
 
+    protected $appends = [
+        'out_photo_url',
+        'receive_photo_url',
+    ];
+
     public function farm(): BelongsTo
     {
         return $this->belongsTo(Farm::class);
@@ -52,5 +57,23 @@ class ManureTransfer extends Model
     public function receiveUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'receive_user_id');
+    }
+
+    public function getOutPhotoUrlAttribute(): ?string
+    {
+        if (! $this->out_photo) {
+            return null;
+        }
+
+        return route('transfers.media', ['path' => $this->out_photo]);
+    }
+
+    public function getReceivePhotoUrlAttribute(): ?string
+    {
+        if (! $this->receive_photo) {
+            return null;
+        }
+
+        return route('transfers.media', ['path' => $this->receive_photo]);
     }
 }

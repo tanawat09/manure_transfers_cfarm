@@ -157,13 +157,13 @@
                                     <td>
                                         <div class="d-flex gap-1.5">
                                             <!-- Outward Photo Thumb -->
-                                            <a href="#" class="view-image" data-src="{{ asset('storage/' . $transfer->out_photo) }}" data-title="หลักฐานขาออก: {{ $transfer->transfer_no }}">
+                                            <a href="#" class="view-image" data-src="{{ $transfer->out_photo_url }}" data-title="หลักฐานขาออก: {{ $transfer->transfer_no }}">
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle" title="ดูรูปขาออก"><i class="bi bi-box-arrow-up-right me-0.5"></i>ขาออก</span>
                                             </a>
 
                                             <!-- Inward Photo Thumb -->
                                             @if($transfer->receive_photo)
-                                                <a href="#" class="view-image" data-src="{{ asset('storage/' . $transfer->receive_photo) }}" data-title="หลักฐานรับเข้ากอง: {{ $transfer->transfer_no }}">
+                                                <a href="#" class="view-image" data-src="{{ $transfer->receive_photo_url }}" data-title="หลักฐานรับเข้ากอง: {{ $transfer->transfer_no }}">
                                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle" title="ดูรูปรับเข้า"><i class="bi bi-box-arrow-in-down-left me-0.5"></i>ขารับ</span>
                                                 </a>
                                             @endif

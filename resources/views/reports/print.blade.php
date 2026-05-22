@@ -160,11 +160,11 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        <img src="{{ asset('storage/' . $transfer->out_photo) }}" alt="Out" class="proof-img">
+                        <img src="{{ $transfer->out_photo_url }}" alt="Out" class="proof-img">
                     </td>
                     <td class="text-center">
                         @if($transfer->receive_photo)
-                            <img src="{{ asset('storage/' . $transfer->receive_photo) }}" alt="In" class="proof-img">
+                            <img src="{{ $transfer->receive_photo_url }}" alt="In" class="proof-img">
                         @else
                             <span class="text-muted">-</span>
                         @endif
