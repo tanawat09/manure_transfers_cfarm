@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รายงานการขนย้ายมูลไก่</title>
     
+    @empty($pdfMode)
     <!-- Google Fonts: Kanit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,19 +13,100 @@
     
     <!-- Bootstrap 5 CSS for base grid -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    @endempty
     
     <style>
         body {
-            font-family: 'Kanit', sans-serif;
+            font-family: {{ empty($pdfMode) ? "'Kanit', sans-serif" : "garuda, sans-serif" }};
             color: #333333;
             background-color: #ffffff;
             font-size: 0.8rem;
             padding: 1.5cm;
         }
 
+        .screen-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin: -1.5cm -1.5cm 1.2rem;
+            padding: 12px 1.5cm;
+            background: #ffffff;
+            border-bottom: 1px solid #dfe7df;
+            box-shadow: 0 6px 20px rgba(30, 70, 32, 0.08);
+        }
+
+        .screen-toolbar-title {
+            font-weight: 700;
+            color: #1e4620;
+        }
+
+        .screen-toolbar-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .toolbar-btn {
+            border: 1px solid #2e7d32;
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-weight: 600;
+            text-decoration: none;
+            background: #ffffff;
+            color: #2e7d32;
+            cursor: pointer;
+        }
+
+        .toolbar-btn-primary {
+            background: #2e7d32;
+            color: #ffffff;
+        }
+
+        .toolbar-btn:hover {
+            opacity: 0.9;
+        }
+
         .header-title {
             text-align: center;
             margin-bottom: 2rem;
+        }
+
+        .d-flex {
+            display: flex;
+        }
+
+        .justify-content-between {
+            justify-content: space-between;
+        }
+
+        .align-items-center {
+            align-items: center;
+        }
+
+        .mt-4 {
+            margin-top: 1.5rem;
+        }
+
+        .py-4 {
+            padding-top: 1.5rem;
+            padding-bottom: 1.5rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-muted {
+            color: #6c757d;
+        }
+
+        .fw-semibold {
+            font-weight: 600;
         }
 
         .print-logo {
@@ -73,6 +155,10 @@
             border: 1px solid #ddd;
         }
 
+        .transfer-no-cell {
+            white-space: nowrap;
+        }
+
         .badge-print {
             border: 1px solid #666;
             padding: 2px 6px;
@@ -100,6 +186,11 @@
             body {
                 padding: 0;
             }
+
+            .screen-toolbar {
+                display: none !important;
+            }
+
             @page {
                 size: A4 landscape;
                 margin: 1cm;
@@ -109,8 +200,24 @@
 </head>
 <body>
 
+    @php
+        $pdfMode = $pdfMode ?? false;
+        $logoSrc = $pdfMode ? $logoPath : asset('images/cfarm-logo.png');
+    @endphp
+
+    @empty($pdfMode)
+    <div class="screen-toolbar">
+        <div class="screen-toolbar-title">รายงาน PDF</div>
+        <div class="screen-toolbar-actions">
+            <a href="{{ route('reports.pdf', request()->query()) }}" class="toolbar-btn toolbar-btn-primary">ดาวน์โหลด PDF</a>
+            <button type="button" class="toolbar-btn" id="printReportBtn">พิมพ์รายงาน</button>
+            <a href="{{ route('reports.index', request()->query()) }}" class="toolbar-btn">กลับหน้ารายงาน</a>
+        </div>
+    </div>
+    @endempty
+
     <div class="header-title">
-        <img src="{{ asset('images/cfarm-logo.png') }}" alt="CFARM Logo" class="print-logo">
+        <img src="{{ $logoSrc }}" alt="CFARM Logo" class="print-logo">
         <h4>รายงานประวัติการขนย้ายมูลไก่ออกจากฟาร์มและรับเข้ากอง</h4>
         <p>ข้อมูล ณ วันที่ {{ date('d/m/Y H:i') }} น. | จำนวนรายการทั้งหมด {{ $transfers->count() }} เที่ยว</p>
     </div>
@@ -118,7 +225,7 @@
     <table class="print-table">
         <thead>
             <tr>
-                <th style="width: 110px;">เลขที่รายการ</th>
+                <th style="width: 140px;">เลขที่รายการ</th>
                 <th>ฟาร์มต้นทาง</th>
                 <th style="width: 110px;">ทะเบียนรถ</th>
                 <th style="width: 90px; text-align: right;">น้ำหนัก (กก.)</th>
@@ -133,7 +240,7 @@
         <tbody>
             @forelse($transfers as $transfer)
                 <tr>
-                    <td class="fw-semibold">{{ $transfer->transfer_no }}</td>
+                    <td class="fw-semibold transfer-no-cell">{{ $transfer->transfer_no }}</td>
                     <td>{{ $transfer->farm->name }}</td>
                     <td>{{ $transfer->license_plate }}</td>
                     <td style="text-align: right;" class="fw-semibold">{{ number_format($transfer->weight, 2) }}</td>
@@ -160,11 +267,21 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        <img src="{{ $transfer->out_photo_url }}" alt="Out" class="proof-img">
+                        @php
+                            $outPhotoSrc = $pdfMode && $transfer->out_photo
+                                ? \Illuminate\Support\Facades\Storage::disk('public')->path($transfer->out_photo)
+                                : $transfer->out_photo_url;
+                        @endphp
+                        <img src="{{ $outPhotoSrc }}" alt="Out" class="proof-img">
                     </td>
                     <td class="text-center">
                         @if($transfer->receive_photo)
-                            <img src="{{ $transfer->receive_photo_url }}" alt="In" class="proof-img">
+                            @php
+                                $receivePhotoSrc = $pdfMode
+                                    ? \Illuminate\Support\Facades\Storage::disk('public')->path($transfer->receive_photo)
+                                    : $transfer->receive_photo_url;
+                            @endphp
+                            <img src="{{ $receivePhotoSrc }}" alt="In" class="proof-img">
                         @else
                             <span class="text-muted">-</span>
                         @endif
@@ -184,12 +301,20 @@
     </div>
 
     <!-- Automatically open browser print dialog on load -->
+    @empty($pdfMode)
     <script>
+        function openPdfDialog() {
+            window.print();
+        }
+
+        document.getElementById('printReportBtn').addEventListener('click', openPdfDialog);
+
         window.onload = function() {
             setTimeout(function() {
-                window.print();
+                openPdfDialog();
             }, 500);
         };
     </script>
+    @endempty
 </body>
 </html>

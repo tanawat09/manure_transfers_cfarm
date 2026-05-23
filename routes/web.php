@@ -39,10 +39,14 @@ Route::middleware(['auth'])->group(function () {
     // 3. รายงานและ Export (ทุกคนมีสิทธิ์ดูได้)
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/excel', [ReportController::class, 'exportExcel'])->name('reports.excel');
+    Route::get('/reports/pdf', [ReportController::class, 'downloadPdf'])->name('reports.pdf');
     Route::get('/reports/print', [ReportController::class, 'print'])->name('reports.print');
 
     // 4. ข้อมูลพื้นฐาน CRUD (Admin เท่านั้น)
     Route::middleware(['role:admin'])->group(function () {
+        Route::get('/reports/{transfer}/edit', [ReportController::class, 'edit'])->name('reports.edit');
+        Route::put('/reports/{transfer}', [ReportController::class, 'update'])->name('reports.update');
+        Route::delete('/reports/{transfer}', [ReportController::class, 'destroy'])->name('reports.destroy');
         Route::resource('farms', FarmController::class)->except(['show']);
         Route::resource('piles', ManurePileController::class)->except(['show']);
         Route::resource('users', UserController::class)->except(['show']);
